@@ -4,8 +4,10 @@ from colorama import Fore, Style, init
 import random
 from fake_useragent import UserAgent
 
+# Inisialisasi colorama
 init(autoreset=True)
 
+# Header untuk request HTTP
 HEADERS = {
     "accept": "application/json, text/plain, */*",
     "accept-encoding": "gzip, deflate, br, zstd",
@@ -19,12 +21,13 @@ HEADERS = {
     "sec-fetch-dest": "empty",
     "sec-fetch-mode": "cors",
     "sec-fetch-site": "same-site",
-    "user-agent": UserAgent().random
+    "user-agent": UserAgent().random  # Menggunakan fake_useragent untuk menghasilkan user-agent acak
 }
 
+# Fungsi untuk menampilkan logo dan pesan
 def print_logo():
     print(Fore.CYAN + r"""
-    _____                      _____ _               _              
+    _____                      _____ _               _               
    / ____|                    / ____| |             | |            
   | |  __ _ __ __ _ ___ ___  | |    | |__   ___  ___| | _____ _ __ 
   | | |_ | '__/ _` / __/ __| | |    | '_ \ / _ \/ __| |/ / _ \ '__|
@@ -33,7 +36,7 @@ def print_logo():
                                                                   
     """)
 
-
+# Fungsi untuk membaca username dan password dari file
 def read_credentials(file_path="user.txt"):
     credentials = []
     with open(file_path, "r") as file:
@@ -45,17 +48,28 @@ def read_credentials(file_path="user.txt"):
                 credentials.append((username, password))
     return credentials
 
+# Fungsi untuk membaca proxy dari file
 def read_proxies(file_path):
     with open(file_path, 'r') as file:
         proxies = file.read().splitlines()
     return proxies
 
-def login_and_get_token(username, password):
+# Fungsi untuk login dan mendapatkan token, bisa menggunakan proxy jika diperlukan
+def login_and_get_token(username, password, proxy=None):
     url = "https://api.getgrass.io/login"
     payload = {"username": username, "password": password}
-    
-    response = requests.post(url, json=payload, headers=HEADERS)
-    
+
+    # Tentukan proxies jika ada
+    proxies = None
+    if proxy:
+        proxies = {
+            "http": proxy,
+            "https": proxy
+        }
+
+    # Kirim request login dengan atau tanpa proxy
+    response = requests.post(url, json=payload, headers=HEADERS, proxies=proxies)
+
     if response.status_code == 200:
         try:
             access_token = response.json()["result"]["data"]["accessToken"]
@@ -65,8 +79,10 @@ def login_and_get_token(username, password):
             
     return None
 
+# Inisialisasi UserAgent dari fake_useragent
 ua = UserAgent()
 
+# Fungsi untuk mendapatkan data pengguna
 def get_user_data(authorization_token, user_agent, proxy=None):
     url = "https://api.getgrass.io/retrieveUser"
     
@@ -109,6 +125,7 @@ def get_user_data(authorization_token, user_agent, proxy=None):
     
     return None
 
+# Fungsi untuk menghitung jumlah perangkat aktif
 def get_active_devices(authorization_token, user_agent, proxy=None):
     url = "https://api.getgrass.io/activeDevices"
     
@@ -145,6 +162,7 @@ def get_active_devices(authorization_token, user_agent, proxy=None):
     
     return 0
 
+# Fungsi utama untuk memproses semua akun
 def process_accounts(auth_file_path, proxy_file_path, use_proxy=False):
     credentials = read_credentials(auth_file_path)
     proxies = read_proxies(proxy_file_path) if use_proxy else None
@@ -156,7 +174,8 @@ def process_accounts(auth_file_path, proxy_file_path, use_proxy=False):
     print_logo()
     
     for idx, (username, password) in enumerate(credentials):
-        access_token = login_and_get_token(username, password)
+        selected_proxy = random.choice(proxies) if use_proxy else None
+        access_token = login_and_get_token(username, password, proxy=selected_proxy)
         
         if access_token is None:
             print(Fore.RED + f"Login gagal untuk akun {username}.")
@@ -165,8 +184,6 @@ def process_accounts(auth_file_path, proxy_file_path, use_proxy=False):
         user_agent = ua.random
         
         print(Fore.CYAN + f"--------------------Account {idx + 1}--------------------")
-        
-        selected_proxy = random.choice(proxies) if use_proxy else None
         
         user_data = get_user_data(access_token, user_agent, proxy=selected_proxy)
 
@@ -183,9 +200,12 @@ def process_accounts(auth_file_path, proxy_file_path, use_proxy=False):
         
         print(Fore.CYAN + "-------------------------------------------------")
 
+# Menyediakan path ke file token dan file proxy
 auth_file_path = 'user.txt'
 proxy_file_path = 'proxy.txt'
 
+# Tanyakan apakah ingin menggunakan proxy atau tidak
 use_proxy = input("Do you want to use proxy? (y/n): ").strip().lower() == 'y'
 
+# Memproses akun dengan file teks yang berisi token dan proxy
 process_accounts(auth_file_path, proxy_file_path, use_proxy)
