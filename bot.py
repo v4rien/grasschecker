@@ -1,8 +1,10 @@
 import requests
 import json
+import os
 from colorama import Fore, Style, init
 from fake_useragent import UserAgent
 
+os.system('cls' if os.name == 'nt' else 'clear')
 init(autoreset=True)
 
 HEADERS = {
